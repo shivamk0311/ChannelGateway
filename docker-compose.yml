@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: channel-gateway-postgres
+    environment:
+      - POSTGRES_USER=channel 
+      - POSTGRES_PASSWORD=channel
+      - POSTGRES_DB=channel_gateway
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U channel -d channel_gateway"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: channel-gateway-api
+    environment:
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+    depends_on: 
+      postgres: 
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+  
+  redis:
+    image: redis:7
+    container_name: channel-gateway-redis 
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+  
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: channel-gateway-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=channel
+      - RABBITMQ_DEFAULT_PASS=channel 
+
+volumes:
+    postgres_data:
